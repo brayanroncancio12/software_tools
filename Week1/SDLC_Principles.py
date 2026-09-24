@@ -2,7 +2,7 @@
 
 # Messy code – not modular, not reusable, hard to maintain
 import pandas as pd
-from typing import List
+from typing import List, cast
 import random
 
 numbers = [random.randint(1, 100) for _ in range(10)]
@@ -118,4 +118,67 @@ No error handling → breaks if column names change.
 Not scalable (imagine working on multiple CSVs).
 
 No documentation → not good for collaboration.
-""
+"""
+
+# Step 2: Refactored Pandas Code (With Principles)
+# I'm applying the same idea as the numbers example above: instead of one
+# big block of code, I split each task into its own function so it's
+# easier to read, test, and reuse with a different CSV/columns later.
+
+
+def load_dataset(url: str) -> pd.DataFrame:
+    """Load a CSV file from a URL into a DataFrame."""
+    return pd.read_csv(url)
+
+
+def column_average(df: pd.DataFrame, column: str) -> float:
+    """Return the mean of a numeric column."""
+    # Checking the column exists first, otherwise pandas throws a
+    # confusing KeyError that doesn't say what actually went wrong.
+    if column not in df.columns:
+        raise ValueError(f"Column '{column}' not found in dataset")
+    return df[column].mean()
+
+
+def column_max(df: pd.DataFrame, column: str) -> float:
+    """Return the maximum value of a numeric column."""
+    if column not in df.columns:
+        raise ValueError(f"Column '{column}' not found in dataset")
+    return df[column].max()
+
+
+def filter_by_value(df: pd.DataFrame, column: str, value: str) -> pd.DataFrame:
+    """Return only the rows where `column` equals `value`."""
+    if column not in df.columns:
+        raise ValueError(f"Column '{column}' not found in dataset")
+    # loc[] is typed by pandas-stubs as Series | DataFrame even though a
+    # DataFrame boolean mask always returns a DataFrame here, so I cast it.
+    return cast(pd.DataFrame, df.loc[df[column] == value])
+
+
+if __name__ == "__main__":
+    # Same workflow as before, just using the functions instead of
+    # writing the logic inline. If I get a different dataset later
+    # (not iris), I just change these variables/URL, not the functions.
+    IRIS_URL = "https://raw.githubusercontent.com/mwaskom/seaborn-data/master/iris.csv"
+
+    iris_df = load_dataset(IRIS_URL)
+    print("Average sepal length:", column_average(iris_df, "sepal_length"))
+    print("Max petal width:", column_max(iris_df, "petal_width"))
+    print(filter_by_value(iris_df, "species", "setosa").head())
+
+"""
+✅ Improvements (same principles as the numbers example):
+
+Modularity: Loading, aggregating and filtering are now separate functions.
+
+Reusability: Same functions work with any CSV, not just iris.csv.
+
+Maintainability: If I need median/min later, I just add one more function.
+
+Scalability: Easy to loop this over multiple CSV files/columns.
+
+Reliability & Quality: Raises a clear error if a column name doesn't exist.
+
+Collaboration: Docstrings explain what each function does for teammates.
+"""
